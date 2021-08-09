@@ -1,9 +1,6 @@
 import webscrape as ws
-#from abc import ABCMeta, abstractmethod
-#import requests
-import lxml.html
-import time
-#import pandas as pd
+import re
+import pandas as pd
 
 
 class WebScrapeNifty(ws.WebScrape):    
@@ -12,36 +9,62 @@ class WebScrapeNifty(ws.WebScrape):
         ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'
         self.headers = {'User-Agent': ua}
   
-    def get_page_list(self, element):
+    def __scrape_list_page(self, element):
+        nayoses = element.cssselect(".nayose")
+        for nayose in nayoses:
+            nayose_url = self.__get_nayose_url(nayose)
+            print(nayose.get('data-name'))
+            print(nayose_url)
+
+            record = self.__get_simple_record(nayose)
+            #ページ種別で解析切替
+            detail_record = self.get_record_by_url(nayose_url)
+            if detail_record != None:
+                record.update(detail_record)
+                
+            self.df = self.df.append(record, ignore_index=True)
+            record['url'] = nayose_url
+
+    
+    def __get_nayose_url(self, nayose):
+        links = nayose.cssselect(".nayose_head p a")
+        #for link in links:
+            #   yield link.get('href')
+        if len(links) > 0:
+            #  print(links[0].get('href'))
+            return links[0].get('href')
+
+    def __get_sub_page_list(self, element):
         nayoses = element.cssselect(".nayose")
         for nayose in nayoses:
             print(nayose.get('data-name'))
-            links = nayose.cssselect(".nayose_head p a")
-    #        for link in links:
-    #            yield link.get('href')
-            if len(links) > 0:
-    #            print(links[0].get('href'))
-                yield links[0].get('href')
+            yield self.__get_nayose_url(nayose)
 
-    def get_record_by_elem(self, element):
+            #links = nayose.cssselect(".nayose_head p a")
+            #if len(links) > 0:
+            #    yield links[0].get('href')
+
+    def get_record_by_elem(self, element): #element:detail page
         keys = element.cssselect('#detailInfoTable tr th')
         if len(keys) == 0:
             return None
         values = element.cssselect('#detailInfoTable tr td')
-        record = {keys[i].text: values[i].text.strip() for i in range(len(keys))}
+        values = [x.text if x.text is not None else '' for x in values]
+        record = {keys[i].text: values[i].strip() for i in range(len(keys))}
         if len(element.cssselect('.titleMain .name')) > 0:
             record['名前'] = element.cssselect('.titleMain .name')[0].text
         if len(element.cssselect('.otherPrice')) > 0:
             record['管理費等'] = element.cssselect('.otherPrice')[0].text
         return record
 
-    def get_df_by_url(self, url):
-        response = self.session.get(url, headers=self.headers)
-        body = lxml.html.fromstring(response.content)
-        body.make_links_absolute(response.url)
-        return self.get_record_by_elem(body)
+    def __get_simple_record(self, nayose):
+        keys = nayose.cssselect(".itemContent dt")
+        values = nayose.cssselect(".itemContent dd")
+        record = {keys[i].text: values[i].text.strip() for i in range(len(keys))}
+        return record
+       
 
-    def get_next_page_url(self, element):
+    def __get_next_list_page_url(self, element): #override
         links = element.cssselect(".marginTop0 .pageNation li.mg3 a")
         if len(links) == 0:
             return None
@@ -52,30 +75,48 @@ class WebScrapeNifty(ws.WebScrape):
         return link_url
 
 
-    def scrape_all(self, url):
-        response = self.session.get(url, headers=self.headers)
-        body = lxml.html.fromstring(response.content)
-        body.make_links_absolute(response.url)
-        while True:
-            nayose_urls = self.get_page_list(body)
-            for nayose_url in nayose_urls:
-                print(nayose_url)
-                record = self.get_record_by_url(nayose_url)
-                self.df = self.df.append(record, ignore_index=True)
-            next_page_url = self.get_next_page_url(body)
-            if next_page_url == None:
-                print("end")
-                break
-            time.sleep(1)
-            print(next_page_url)
-            response = self.session.get(next_page_url, headers=self.headers)
-            body = lxml.html.fromstring(response.content)
-            body.make_links_absolute(response.url)
+    def scrape_all(self, url): #override
+        body = self.get_element(url)
+
+        self.paging_exe(body, self.__scrape_list_page, self.__get_next_list_page_url)
+
+        print("end")
         return self.df
 
 
-wsn = WebScrapeNifty()
-#wsn.set_header()
-df = wsn.scrape_all('https://myhome.nifty.com/chuko/mansion/kanto/tokyo/?cities=shinjukuku,toshimaku,itabashiku&subtype=buc,buh&b2=15000000&b10=20&b6=15')
+kanto = {}
+west = ['nerimaku','setagayaku','shinjukuku','nakanoku','suginamiku','shibuyaku']
+north = ['itabashiku','toshimaku','bunkyoku','adachiku','kitaku','arakawaku']
+east = ['katsushikaku','edogawaku','taitoku','kotoku','sumidaku','chuoku']
+south = ['minatoku','shinagawaku','otaku','meguroku','chiyodaku']
+kanto['tokyo'] = {'e':east, 'w':west, 's':south, 'n':north}
+kanto['tokyo']
 
-df.to_csv("nifty_records.csv", index=False)   
+
+def make_url(prefecture, area, max_price):
+    #&subtype=buc //中古マンション
+    #buh& //中古一戸建て
+    #b2=15000000 //価格上限（b1=下限）
+    #&b10=20 //建物面積(m2)
+    #&b6=15 //駅からの距離
+    #max_price = 15000000
+    url = "https://myhome.nifty.com/chuko/mansion/kanto/" \
+        + prefecture \
+        + "/?cities=" + re.sub("[\[\]\'\ ]","", str(kanto[prefecture][area])) \
+        + "&subtype=buc" \
+        + "&b2=" + str(max_price) \
+        + "&b10=20&b6=15"
+    return url
+
+wsn = WebScrapeNifty()
+#url = make_url('tokyo', 'w')
+
+df_e = wsn.scrape_all(make_url('tokyo', 'e', 20000000))
+df_e['area'] = 'east'
+df_s = wsn.scrape_all(make_url('tokyo', 's', 20000000))
+df_s['area'] = 'south'
+df = pd.concat([df_e,df_s])
+
+#df = pd.concat([df_w,df_e,df_n,df_s])
+df.to_csv("nifty_records_tokyo.csv", index=False)   
+
