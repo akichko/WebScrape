@@ -1,6 +1,7 @@
 import webscrapeBs as ws
 import re
 import pandas as pd
+import time
 
 
 class WebScrapeNiftyBs(ws.WebScrapeBs):    
@@ -265,7 +266,8 @@ class Controller:
         return self.wsn.scrape_all(url)
 
 
-#Main
+#Main #################################################################
+start_time = time.time()
 controller = Controller()
 df = pd.DataFrame()
 
@@ -296,3 +298,6 @@ df = pd.concat([df,df_tmp])
 
 
 df.to_csv("nifty_records_all.csv", index=False)   
+
+elapsed_time = time.time() - start_time
+print ("elapsed_time:{0}".format(elapsed_time) + "[sec]")

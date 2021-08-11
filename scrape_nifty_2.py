@@ -1,0 +1,233 @@
+import webscrape2 as ws
+import re
+import pandas as pd
+import time
+
+class WebScrapeNifty(ws.WebScrape2):
+    
+    kanto = {}
+
+    t23_w = ['nerimaku','setagayaku','shinjukuku','nakanoku','suginamiku','shibuyaku']
+    t23_n = ['itabashiku','toshimaku','bunkyoku','adachiku','kitaku','arakawaku']
+    t23_e = ['katsushikaku','edogawaku','taitoku','kotoku','sumidaku','chuoku']
+    t23_s = ['minatoku','shinagawaku','otaku','meguroku','chiyodaku']
+    kanto['tokyo'] = {'t23_e':t23_e, 't23_w':t23_w, 't23_s':t23_s, 't23_n':t23_n}
+
+    mito = ['mitoshi','hitachinakashi']
+    kanto['ibaraki'] = {'mito':mito}
+
+    yk_e = ['yokohamashitsurumiku','yokohamashikanagawaku','yokohamashinishiku','yokohamashinakaku']
+    yk_n = ['yokohamashikohokuku','yokohamashiaobaku','yokohamashitsuzukiku','yokohamashimidoriku','yokohamashitotsukaku']
+    yk_s = ['yokohamashisakaeku','yokohamashiisogoku','yokohamashikanazawaku','yokohamashikonanku','yokohamashiminamiku']
+    yk_w = ['yokohamashiseyaku','yokohamashiizumiku','yokohamashiasahiku','yokohamashihodogayaku']
+ 
+    kwsk = ['kawasakishikawasakiku','kawasakishisaiwaiku','kawasakishinakaharaku','kawasakishitakatsuku', \
+            'kawasakishitamaku','kawasakishimiyamaeku','kawasakishiasaoku']
+ 
+    kanto['kanagawa'] = {'yk_e':yk_e, 'yk_n':yk_n, 'yk_s':yk_s, 'yk_w':yk_w, 'kwsk':kwsk}
+ 
+    def __init__(self):
+        super().__init__()
+        ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'
+        self.headers = {'User-Agent': ua}
+  
+    def make_url(self, prefecture, area, max_price, max_year):
+        min_m2 = 20
+        max_dist_station = 15
+        #&subtype=buc //中古マンション
+        #buh& //中古一戸建て
+        #b2=15000000 //価格上限（b1=下限）
+        #&b10=20 //建物面積(m2)
+        #&b6=15 //駅からの距離
+        #b22=40 //築年数
+        #max_price = 15000000
+        url = "https://myhome.nifty.com/chuko/mansion/kanto/" \
+            + prefecture \
+            + "/?cities=" + re.sub("[\[\]\'\ ]","", str(self.kanto[prefecture][area])) \
+            + "&subtype=buc" \
+            + "&b2=" + str(max_price) \
+            + "&b10=" + str(max_dist_station) \
+            + "&b6=" + str(min_m2) \
+            + "&b22=" + str(max_year)
+        return url
+
+    def scrape_all(self, pref, area, max_price, max_year):
+        print("start")
+        #self.pref = pref
+        #self.area = area
+        url = self.make_url(pref, area, max_price, max_year)
+        print(url)
+        body = self.get_element_by_url(url)
+
+        #scraper = Scraper_ListPage(body, self)
+        scraper = Scraper_ListPage(None, self)
+
+        #df = scraper.scrape()
+        df = self.exe_scrape(url, scraper)
+
+        df['pref'] = pref
+        df['area'] = area
+
+        print("end")
+
+        return df
+        #return self.scrape_all(url)
+
+
+class Scraper_ListPage(ws.Scraper):
+    def get_sub_scrapers(self): #override
+        nayoses = self.elem.select(".nayose")
+        for nayose in nayoses:
+            print(nayose.get('data-name'))
+            yield Scraper_Nayose(nayose, self.webscrape)
+
+    def get_next_elem(self): #override
+        elems = self.elem.select(".pageNation li.mg3 a")
+        for a in elems:
+            if a.text == "次へ>":
+                print(a.get('href'))
+                return self.webscrape.get_element_by_url(a.get('href'))
+
+
+class Scraper_Nayose(ws.Scraper):
+
+    def get_sub_scrapers(self):
+        nayose = self.elem
+
+        self.nayose_url = self.__get_nayose_url(nayose)
+        #print(nayose.get('data-name'))
+        print(self.nayose_url)
+        elem_nayose_page = self.webscrape.get_element_by_url(self.nayose_url)
+        
+        #ページ種別で解析切替
+        yield self.__get_sub_scraper(nayose, elem_nayose_page)
+   
+    def __get_sub_scraper(self, nayose, elem_nayose_page):        
+        elem_link = nayose.select_one(".shinchiku_manshion .data .company")
+        if elem_link.select('.athomef'):
+            #print('at home')
+            return Scraper_Detail_atHome(elem_nayose_page, self.webscrape, 'at home')
+
+        elif elem_link.select('.yahoof'):
+            #print('yahoo')
+            return Scraper_Detail_basic(elem_nayose_page, self.webscrape, 'yahoo')
+
+        elif elem_link.select('.forrenf'):
+            #print('suumo')
+            return Scraper_Detail_basic(elem_nayose_page, self.webscrape, 'suumo') #suumo
+
+        elif elem_link.select('.adparkf'):
+            print('adpark')
+            return Scraper_Detail_basic(elem_nayose_page, self.webscrape, 'adpark') #NG
+
+        else:
+            print('other')
+            return Scraper_Detail_basic(elem_nayose_page, self.webscrape, 'other')
+
+    def __get_nayose_url(self, nayose):
+        a = nayose.select_one(".nayose_head > p > a")
+        return a.get('href')
+
+    def update_df(self):
+        #print("get_df : nayose")
+
+        record = self.__get_simple_record()
+        record['url'] = self.nayose_url
+        record['cate'] = self.elem.select_one("span.cate").text
+        
+        for e in record:
+            self.df[e] = record[e]
+
+    def __get_simple_record(self):
+        keys = self.elem.select(".itemContent dt")
+        values = self.elem.select(".itemContent dd")
+        record = {keys[i].text: values[i].text.strip() for i in range(len(keys))}
+        return record
+
+
+class Scraper_Detail_basic(ws.Scraper):
+    def __init__(self, elem, webscrape, company):
+        super().__init__(elem, webscrape)
+        self.company = company
+
+    def update_df(self):
+        #print("get_df : detail")
+        element = self.elem
+        keys = element.select('#detailInfoTable tr th')
+        if len(keys) == 0:
+            return None
+        values = element.select('#detailInfoTable tr td')
+        record = {keys[i].text: values[i].text.strip() for i in range(len(keys))}
+        if len(element.select('.titleMain .name')) > 0:
+            record['name'] = element.select('.titleMain .name')[0].text
+        if len(element.select('.otherPrice')) > 0:
+            record['othercost'] = element.select('.otherPrice')[0].text
+        record['site'] = self.company
+
+        self.df = pd.DataFrame(record, index=[0])
+        #return pd.DataFrame.from_dict(record, orient='index')
+
+
+class Scraper_Detail_atHome(ws.Scraper):
+    def __init__(self, elem, webscrape, company):
+        super().__init__(elem, webscrape)
+        self.company = company
+
+    def update_df(self):
+        #print("get_df : detail")
+        element = self.elem
+        elem_iframe = element.select_one('iframe#itemDetailFrame')
+        athome_url = elem_iframe.get('src')
+        elem_athome_page = self.webscrape.get_element_by_url(athome_url)
+
+        keys = elem_athome_page.select('.wrapLeftnoMap tr th')
+        if len(keys) == 0:
+            return None
+        values = elem_athome_page.select('.wrapLeftnoMap tr td')
+        record = {keys[i].text: values[i].text.strip() for i in range(len(keys))}
+
+        record['name'] = record['建物名・部屋番号']
+        record['site'] = self.company
+
+        self.df = pd.DataFrame(record, index=[0])
+        #return pd.DataFrame.from_dict(record, orient='index')
+
+
+# Main #################################################################
+
+start_time = time.time()
+df = pd.DataFrame()
+scraper = WebScrapeNifty()
+
+#tokyo
+df_tmp = scraper.scrape_all('tokyo', 't23_e', 20000000, 40)
+df = pd.concat([df,df_tmp])
+df_tmp = scraper.scrape_all('tokyo', 't23_s', 20000000, 40)
+df = pd.concat([df,df_tmp])
+df_tmp = scraper.scrape_all('tokyo', 't23_w', 20000000, 40)
+df = pd.concat([df,df_tmp])
+df_tmp = scraper.scrape_all('tokyo', 't23_n', 20000000, 40)
+df = pd.concat([df,df_tmp])
+
+#ibaraki
+df_tmp = scraper.scrape_all('ibaraki', 'mito', 20000000, 40)
+df = pd.concat([df,df_tmp])
+
+#yokohama
+df_tmp = scraper.scrape_all('kanagawa', 'yk_e', 20000000, 40)
+df = pd.concat([df,df_tmp])
+df_tmp = scraper.scrape_all('kanagawa', 'yk_n', 20000000, 40)
+df = pd.concat([df,df_tmp])
+df_tmp = scraper.scrape_all('kanagawa', 'yk_s', 20000000, 40)
+df = pd.concat([df,df_tmp])
+df_tmp = scraper.scrape_all('kanagawa', 'yk_w', 20000000, 40)
+df = pd.concat([df,df_tmp])
+#kawasaki
+df_tmp = scraper.scrape_all('kanagawa', 'kwsk', 20000000, 40)
+df = pd.concat([df,df_tmp])
+
+df.to_csv("nifty_records_all.csv", index=False) 
+df.to_excel('test.xlsx')  
+
+elapsed_time = time.time() - start_time
+print ("elapsed_time:{0}".format(elapsed_time) + "[sec]")
