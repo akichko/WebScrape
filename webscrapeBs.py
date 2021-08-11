@@ -19,7 +19,8 @@ class WebScrapeBs():
     def get_element_by_url(self, url, cssselect_expr=None):
         response = self.session.get(url, headers=self.headers)
         response.encoding = response.apparent_encoding
-        time.sleep(0.8)
+        #cookie = response.cookies
+        time.sleep(0.7)
         soup = BeautifulSoup(response.text, 'lxml')
         for a in soup.find_all('a'):
             a.attrs['href'] = urljoin(url,a.get('href'))
@@ -61,4 +62,16 @@ class WebScrapeBs():
             print(next_page_url)
             element = self.get_element_by_url(next_page_url)
 
+
+class ElemParser(metaclass=ABCMeta):
+    def __init__(self, name, webscrape):
+        self.webscrape = webscrape
+        self.company_name = name
+
+    def get_company_name(self):
+        return self.company_name
+
+    @abstractmethod
+    def get_record_by_detail_page(self, element):
+        pass
 
