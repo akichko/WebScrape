@@ -46,8 +46,8 @@ class WebScrapeNifty(ws.WebScrape2):
             + "/?cities=" + re.sub("[\[\]\'\ ]","", str(self.kanto[prefecture][area])) \
             + "&subtype=buc" \
             + "&b2=" + str(max_price) \
-            + "&b10=" + str(max_dist_station) \
-            + "&b6=" + str(min_m2) \
+            + "&b10=" + str(min_m2) \
+            + "&b6=" + str(max_dist_station) \
             + "&b22=" + str(max_year)
         return url
 
@@ -57,7 +57,7 @@ class WebScrapeNifty(ws.WebScrape2):
         #self.area = area
         url = self.make_url(pref, area, max_price, max_year)
         print(url)
-        body = self.get_element_by_url(url)
+        #body = self.get_element_by_url(url)
 
         #scraper = Scraper_ListPage(body, self)
         scraper = Scraper_ListPage(None, self)
