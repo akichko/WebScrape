@@ -28,7 +28,7 @@ class WebScrape2(metaclass=ABCMeta):
         else:
             return soup
 
-    def exe_scrape(self, url, scraper):
+    def exe_scrape_by_url(self, url, scraper):
         first_elem = self.get_element_by_url(url)
         scraper.set_elem(first_elem)
         return scraper.scrape()
@@ -55,7 +55,7 @@ class Scraper(metaclass=ABCMeta):
             next_elem = self.get_next_elem()
             if next_elem == None:
                 break
-            self.elem = next_elem
+            self.set_elem(next_elem)
 
         return self.df
 

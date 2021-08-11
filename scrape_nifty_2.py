@@ -4,27 +4,29 @@ import pandas as pd
 import time
 
 class WebScrapeNifty(ws.WebScrape2):
-    
-    kanto = {}
 
-    t23_w = ['nerimaku','setagayaku','shinjukuku','nakanoku','suginamiku','shibuyaku']
-    t23_n = ['itabashiku','toshimaku','bunkyoku','adachiku','kitaku','arakawaku']
-    t23_e = ['katsushikaku','edogawaku','taitoku','kotoku','sumidaku','chuoku']
-    t23_s = ['minatoku','shinagawaku','otaku','meguroku','chiyodaku']
-    kanto['tokyo'] = {'t23_e':t23_e, 't23_w':t23_w, 't23_s':t23_s, 't23_n':t23_n}
+    kanto = {
+        'tokyo' : {
+            't23_w' : ['nerimaku','setagayaku','shinjukuku','nakanoku','suginamiku','shibuyaku'],
+            't23_n' : ['itabashiku','toshimaku','bunkyoku','adachiku','kitaku','arakawaku'],
+            't23_e' : ['katsushikaku','edogawaku','taitoku','kotoku','sumidaku','chuoku'],
+            't23_s' : ['minatoku','shinagawaku','otaku','meguroku','chiyodaku']
+        },
 
-    mito = ['mitoshi','hitachinakashi']
-    kanto['ibaraki'] = {'mito':mito}
+        'ibaraki' : {
+            'mito' : ['mitoshi','hitachinakashi']
+        },
 
-    yk_e = ['yokohamashitsurumiku','yokohamashikanagawaku','yokohamashinishiku','yokohamashinakaku']
-    yk_n = ['yokohamashikohokuku','yokohamashiaobaku','yokohamashitsuzukiku','yokohamashimidoriku','yokohamashitotsukaku']
-    yk_s = ['yokohamashisakaeku','yokohamashiisogoku','yokohamashikanazawaku','yokohamashikonanku','yokohamashiminamiku']
-    yk_w = ['yokohamashiseyaku','yokohamashiizumiku','yokohamashiasahiku','yokohamashihodogayaku']
- 
-    kwsk = ['kawasakishikawasakiku','kawasakishisaiwaiku','kawasakishinakaharaku','kawasakishitakatsuku', \
-            'kawasakishitamaku','kawasakishimiyamaeku','kawasakishiasaoku']
- 
-    kanto['kanagawa'] = {'yk_e':yk_e, 'yk_n':yk_n, 'yk_s':yk_s, 'yk_w':yk_w, 'kwsk':kwsk}
+        'kanagawa' : {
+            'yk_e' : ['yokohamashitsurumiku','yokohamashikanagawaku','yokohamashinishiku','yokohamashinakaku'],
+            'yk_n' : ['yokohamashikohokuku','yokohamashiaobaku','yokohamashitsuzukiku','yokohamashimidoriku','yokohamashitotsukaku'],
+            'yk_s' : ['yokohamashisakaeku','yokohamashiisogoku','yokohamashikanazawaku','yokohamashikonanku','yokohamashiminamiku'],
+            'yk_w' : ['yokohamashiseyaku','yokohamashiizumiku','yokohamashiasahiku','yokohamashihodogayaku'],
+            'kwsk' : ['kawasakishikawasakiku','kawasakishisaiwaiku','kawasakishinakaharaku','kawasakishitakatsuku', \
+                        'kawasakishitamaku','kawasakishimiyamaeku','kawasakishiasaoku']
+        }
+    }
+
  
     def __init__(self):
         super().__init__()
@@ -63,7 +65,7 @@ class WebScrapeNifty(ws.WebScrape2):
         scraper = Scraper_ListPage(None, self)
 
         #df = scraper.scrape()
-        df = self.exe_scrape(url, scraper)
+        df = self.exe_scrape_by_url(url, scraper)
 
         df['pref'] = pref
         df['area'] = area

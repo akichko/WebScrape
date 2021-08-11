@@ -47,6 +47,7 @@ df = df.drop(drop_index)
 
 df.to_excel('list.xlsx')
 
+sns.set(style='darkgrid')
 g = sns.pairplot(data=df[df['year']<=40], vars=['year', 'price', 'm2'], hue='area')
 g.fig.set_figheight(10)
 g.fig.set_figwidth(15)
