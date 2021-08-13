@@ -27,6 +27,7 @@ from bs4.element import Tag
 import pandas as pd
 import time
 from urllib.parse import urljoin
+import lxml.html
 
 # WebElement #######################################
 
@@ -44,6 +45,15 @@ class WebElement_bs(WebElement):
     def __init__(self, elem : Tag):
         self.elem = elem
 
+    def create_by_rq_response(self, response) -> WebElement:
+        elem = BeautifulSoup(response.text, 'lxml')
+        for a in elem.find_all('a'):
+            a.attrs['href'] = urljoin(response.url,a.get('href'))
+        return WebElement_bs(elem)
+
+    def create_by_urlib_response(self, response) -> WebElement:
+        return WebElement_bs(BeautifulSoup(response, 'lxml'))
+
     def css_select(self, select_str) -> WebElement:
         ret = []
         for elem in self.elem.select(select_str):
@@ -52,6 +62,56 @@ class WebElement_bs(WebElement):
 
     def css_select_one(self, select_str) -> WebElement:
         return WebElement_bs(self.elem.select_one(select_str))
+
+
+class WebElement_lxml(WebElement):
+    def __init__(self, elem):
+        self.elem = elem
+
+    def create_by_rq_response(self, response) -> WebElement:
+        element = lxml.html.fromstring(response.content)
+        element.make_links_absolute(response.url)
+        return WebElement_lxml(element)
+
+    def create_by_urlib_response(self, response) -> WebElement:
+        pass#return WebElement_lxml#(BeautifulSoup(response, 'lxml'))
+
+    def css_select(self, select_str) -> WebElement:
+        pass
+    def css_select_one(self, select_str) -> WebElement:
+        pass
+    
+# WebAccess #######################################
+
+class WebAccess(metaclass=ABCMeta):
+    def __init__(self, web_elem_type):
+        self.headers = {}
+        self.cookies = {}
+        self.get_interval = 0.7
+
+    @abstractmethod
+    def get_WebElement(self, url) -> WebElement:
+        pass
+
+
+class WebAccess_Rq(WebAccess):
+    def __init__(self):
+        self.headers = {}
+        self.cookies = {}
+
+    def get_WebElement(self, url) -> WebElement:
+        response = self.session.get(url, headers=self.headers, cookies=self.cookies)
+        response.encoding = response.apparent_encoding
+        #self.cookie = response.cookies
+        time.sleep(self.get_interval)
+
+        #if bs
+        elem = WebElement_bs.create_by_rq_response(response)
+        #if lxlm
+        #elem = WebElement_lxml.create_by_rq_response(response)
+
+        return elem
+
 
 class WebScrape2(metaclass=ABCMeta):
     def __init__(self):
