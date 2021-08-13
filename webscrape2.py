@@ -23,9 +23,35 @@
 from abc import ABCMeta, abstractmethod
 import requests
 from bs4 import BeautifulSoup
+from bs4.element import Tag
 import pandas as pd
 import time
 from urllib.parse import urljoin
+
+# WebElement #######################################
+
+class WebElement(metaclass=ABCMeta):
+        
+    @abstractmethod
+    def css_select(select_str) -> 'WebElement':
+        pass
+
+    @abstractmethod
+    def css_select_one(select_str) -> 'WebElement':
+        pass
+
+class WebElement_bs(WebElement):
+    def __init__(self, elem : Tag):
+        self.elem = elem
+
+    def css_select(self, select_str) -> WebElement:
+        ret = []
+        for elem in self.elem.select(select_str):
+            ret.append(WebElement_bs(elem))
+        return ret
+
+    def css_select_one(self, select_str) -> WebElement:
+        return WebElement_bs(self.elem.select_one(select_str))
 
 class WebScrape2(metaclass=ABCMeta):
     def __init__(self):
