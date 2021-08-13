@@ -42,13 +42,13 @@ df['kanri'] = df['othercost'].replace(r',','',regex=True).map(get_kanri)
 df['kanri'] = pd.to_numeric(df['kanri'])
 df.loc[df['kanri'].isna(), 'kanri'] = df['修繕積立金'].replace(r',','',regex=True).map(calc_manen) + df['管理費等'].replace(r',','',regex=True).map(calc_manen)
 
-drop_index = df.index[(df['price']>2000) | (df['year']>=40)]
+drop_index = df.index[(df['price']>2000) | (df['year']>=40) | (df['kanri']>=60000)]
 df = df.drop(drop_index)
 
 df.to_excel('list.xlsx')
 
 sns.set(style='darkgrid')
-g = sns.pairplot(data=df[df['year']<=40], vars=['year', 'price', 'm2'], hue='area')
+g = sns.pairplot(data=df[df['year']<=40], vars=['year', 'price', 'm2', 'kanri'], hue='area')
 g.fig.set_figheight(10)
 g.fig.set_figwidth(15)
 g.savefig("ouput.png")

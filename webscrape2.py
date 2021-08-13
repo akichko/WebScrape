@@ -67,8 +67,8 @@ class Scraper(metaclass=ABCMeta):
         #element = first_element
         while True:
             sub_scrapers = self.get_sub_scrapers()
-            for sub_elem in sub_scrapers:
-                df_tmp = sub_elem.scrape()
+            for sub_scraper in sub_scrapers:
+                df_tmp = sub_scraper.scrape()
                 self.df = self.df.append(df_tmp, ignore_index=True)
             self.update_df()
             
