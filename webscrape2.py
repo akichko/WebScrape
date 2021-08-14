@@ -139,11 +139,19 @@ class WebScrape3(metaclass=ABCMeta):
     def __init__(self, webaccess : WebAccess):
         self.webaccess = webaccess
 
+    def exe_scraping(self, url):
+        elem = self.webaccess.get_WebElement(url)
+        scraper = self.get_scraper(elem)
+        df = scraper.scrape()
+        self.update_df()
+        return df
 
-    def exe_scrape_by_url(self, url, scraper):
-        first_elem = self.get_element_by_url(url)
-        scraper.set_elem(first_elem)
-        return scraper.scrape()
+    @abstractmethod
+    def get_scraper(self, url) -> 'Scraper':
+        pass
+
+    def update_df(self):
+        pass
 
 
 class WebScrape2(metaclass=ABCMeta):

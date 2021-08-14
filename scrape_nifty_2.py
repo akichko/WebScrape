@@ -48,14 +48,13 @@ class WebScrapeNifty(ws.WebScrape3):
                         'kawasakishitamaku','kawasakishimiyamaeku','kawasakishiasaoku']
         }
     }
-
  
     def __init__(self, webaccess : ws.WebAccess):
         ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'
         webaccess.headers = {'User-Agent': ua}
         super().__init__(webaccess)
   
-    def make_url(self, prefecture, area, max_price, max_year):
+    def __make_url(self, prefecture, area, max_price, max_year):
         min_m2 = 20
         max_dist_station = 15
         #&subtype=buc //中古マンション
@@ -79,23 +78,19 @@ class WebScrapeNifty(ws.WebScrape3):
         print("start")
         #self.pref = pref
         #self.area = area
-        url = self.make_url(pref, area, max_price, max_year)
+        url = self.__make_url(pref, area, max_price, max_year)
         print(url)
-        body = webaccess.get_WebElement(url)
 
-        scraper = Scraper_ListPage(body, self.webaccess)
-        #scraper = Scraper_ListPage(None, self.webaccess)
-
-        df = scraper.scrape()
-        #df = self.exe_scrape_by_url(url, scraper)
+        df = self.exe_scraping(url)
 
         df['pref'] = pref
         df['area'] = area
 
         print("end")
-
         return df
-        #return self.scrape_all(url)
+
+    def get_scraper(self, elem) -> ws.Scraper: #override
+        return Scraper_ListPage(elem, self.webaccess)
 
 
 class Scraper_ListPage(ws.Scraper):
@@ -156,6 +151,7 @@ class Scraper_Nayose(ws.Scraper):
         #print("get_df : nayose")
 
         record = self.__get_simple_record()
+        record['data-name'] = self.elem.get_attr_value('data-name')
         record['url'] = self.nayose_url
         record['cate'] = self.elem.css_select_one("span.cate").text
         
