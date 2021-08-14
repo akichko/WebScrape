@@ -25,6 +25,12 @@ def calc_year(text):
     y = int(m_year.group(1)) if (m_year := re.search(r'([0-9]+)年', text)) else 0 
     return y + m / 12
 
+def get_floor(text):
+    if pd.isna(text):
+        return None
+    sign = -1 if (m := re.match(r'地下', text)) else 1
+    return sign * int(m.group(1)) if (m := re.search(r'([0-9]+)階/', text)) else None
+
 df = pd.read_csv("nifty_records_all.csv")
 
 df['year'] = df['築年月'].map(calc_year)
@@ -42,13 +48,27 @@ df['kanri'] = df['othercost'].replace(r',','',regex=True).map(get_kanri)
 df['kanri'] = pd.to_numeric(df['kanri'])
 df.loc[df['kanri'].isna(), 'kanri'] = df['修繕積立金'].replace(r',','',regex=True).map(calc_manen) + df['管理費等'].replace(r',','',regex=True).map(calc_manen)
 
+
+df['floor'] = df['所在階/階建'].map(get_floor)
+if '所在階/構造・階建' in df.columns :
+    df.loc[df['floor'].isna(), 'floor'] = df['所在階/構造・階建'].map(get_floor)
+    
+df['station'] = df['交通'].map(lambda x : match.group(1) if (match := re.search(r'徒歩([0-9]+)分', x)) else None)
+df['station'] = pd.to_numeric(df['station'])
+
+#異常値フィルタ
 drop_index = df.index[(df['price']>2000) | (df['year']>=40) | (df['kanri']>=60000)]
 df = df.drop(drop_index)
 
 df.to_excel('list.xlsx')
 
 sns.set(style='darkgrid')
-g = sns.pairplot(data=df[df['year']<=40], vars=['year', 'price', 'm2', 'kanri'], hue='area')
+g = sns.pairplot(data=df[df['year']<=40], vars=['year', 'price', 'm2', 'kanri', 'floor', 'station'], hue='area')
 g.fig.set_figheight(10)
 g.fig.set_figwidth(15)
 g.savefig("ouput.png")
+
+g = sns.pairplot(data=df[df['year']<=40], vars=['year', 'price', 'm2', 'kanri'], hue='area')
+g.fig.set_figheight(10)
+g.fig.set_figwidth(15)
+g.savefig("ouput2.png")

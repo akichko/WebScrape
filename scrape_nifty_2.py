@@ -186,6 +186,12 @@ class Scraper_Detail_basic(ws.Scraper):
             record['name'] = element.css_select('.titleMain .name')[0].text
         if len(element.css_select('.otherPrice')) > 0:
             record['othercost'] = element.css_select('.otherPrice')[0].text
+            
+        keys2 = element.css_select('.unitDetail .detailBox dt')
+        values2 = element.css_select('.unitDetail .detailBox dd')
+        record2 = {keys2[i].text: values2[i].text.strip() for i in range(len(keys2))}
+        record.update(record2)
+
         record['site'] = self.company
 
         self.df = pd.DataFrame(record, index=[0])
@@ -227,31 +233,31 @@ webaccess = ws.WebAccess_Rq("bs")
 scraper = WebScrapeNifty(webaccess)
 
 #tokyo
-#df_tmp = scraper.scrape_all('tokyo', 't23_e', 20000000, 40)
-#df = pd.concat([df,df_tmp])
-df_tmp = scraper.scrape_all('tokyo', 't23_s', 20000000, 12)
+df_tmp = scraper.scrape_all('tokyo', 't23_e', 20000000, 40)
 df = pd.concat([df,df_tmp])
-#df_tmp = scraper.scrape_all('tokyo', 't23_w', 20000000, 40)
-#df = pd.concat([df,df_tmp])
-#df_tmp = scraper.scrape_all('tokyo', 't23_n', 20000000, 40)
-#df = pd.concat([df,df_tmp])
+df_tmp = scraper.scrape_all('tokyo', 't23_s', 20000000, 40)
+df = pd.concat([df,df_tmp])
+df_tmp = scraper.scrape_all('tokyo', 't23_w', 20000000, 40)
+df = pd.concat([df,df_tmp])
+df_tmp = scraper.scrape_all('tokyo', 't23_n', 20000000, 40)
+df = pd.concat([df,df_tmp])
 
 #ibaraki
-df_tmp = scraper.scrape_all('ibaraki', 'mito', 20000000, 30)
+df_tmp = scraper.scrape_all('ibaraki', 'mito', 20000000, 40)
 df = pd.concat([df,df_tmp])
 
 #yokohama
-#df_tmp = scraper.scrape_all('kanagawa', 'yk_e', 20000000, 40)
-#df = pd.concat([df,df_tmp])
-#df_tmp = scraper.scrape_all('kanagawa', 'yk_n', 20000000, 40)
-#df = pd.concat([df,df_tmp])
-#df_tmp = scraper.scrape_all('kanagawa', 'yk_s', 20000000, 40)
-#df = pd.concat([df,df_tmp])
-#df_tmp = scraper.scrape_all('kanagawa', 'yk_w', 20000000, 40)
-#df = pd.concat([df,df_tmp])
-##kawasaki
-#df_tmp = scraper.scrape_all('kanagawa', 'kwsk', 20000000, 40)
-#df = pd.concat([df,df_tmp])
+df_tmp = scraper.scrape_all('kanagawa', 'yk_e', 20000000, 40)
+df = pd.concat([df,df_tmp])
+df_tmp = scraper.scrape_all('kanagawa', 'yk_n', 20000000, 40)
+df = pd.concat([df,df_tmp])
+df_tmp = scraper.scrape_all('kanagawa', 'yk_s', 20000000, 40)
+df = pd.concat([df,df_tmp])
+df_tmp = scraper.scrape_all('kanagawa', 'yk_w', 20000000, 40)
+df = pd.concat([df,df_tmp])
+#kawasaki
+df_tmp = scraper.scrape_all('kanagawa', 'kwsk', 20000000, 40)
+df = pd.concat([df,df_tmp])
 
 df.to_csv("nifty_records_all.csv", index=False) 
 df.to_excel('test_2.xlsx')  
