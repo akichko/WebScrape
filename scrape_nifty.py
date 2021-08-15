@@ -24,6 +24,7 @@ import webscrape as ws
 import re
 import pandas as pd
 import time
+import urllib.parse
 
 class WebScrapeNifty(ws.WebScrape3):
 
@@ -145,7 +146,13 @@ class Scraper_Nayose(ws.Scraper):
 
     def __get_nayose_url(self, nayose):
         a = nayose.css_select_one(".nayose_head > p > a")
-        return a.get_attr_value('href')
+        url = a.get_attr_value('href')
+        if re.search(r'/mansion/detail/', url):
+            qs  = urllib.parse.urlparse(url)
+            qsdic = urllib.parse.parse_qs(qs.query)
+
+            url = urllib.parse.unquote(qsdic['url'][0])
+        return url 
 
     def update_df(self):
         #print("get_df : nayose")
@@ -155,6 +162,9 @@ class Scraper_Nayose(ws.Scraper):
         record['url'] = self.nayose_url
         record['cate'] = self.elem.css_select_one("span.cate").text
         
+        if self.df.empty:
+            self.df = pd.DataFrame(record, index=[0])
+
         for e in record:
             self.df[e] = record[e]
 
@@ -200,12 +210,7 @@ class Scraper_Detail_atHome(ws.Scraper):
         self.company = company
 
     def update_df(self):
-        #print("get_df : detail")
-        element = self.elem
-        elem_iframe = element.css_select_one('iframe#itemDetailFrame')
-        athome_url = elem_iframe.get_attr_value('src')
-        elem_athome_page = self.webaccess.get_element_by_url(athome_url)
-
+        elem_athome_page = self.elem
         keys = elem_athome_page.css_select('.wrapLeftnoMap tr th')
         if len(keys) == 0:
             return None
