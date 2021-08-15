@@ -133,53 +133,6 @@ class WebAccess_Rq(WebAccess):
 
         return elem
 
-# WebScrape #######################################
-
-class WebScrape3(metaclass=ABCMeta):
-    def __init__(self, webaccess : WebAccess):
-        self.webaccess = webaccess
-
-    def exe_scraping(self, url):
-        elem = self.webaccess.get_WebElement(url)
-        scraper = self.get_scraper(elem)
-        df = scraper.scrape()
-        self.update_df()
-        return df
-
-    @abstractmethod
-    def get_scraper(self, url) -> 'Scraper':
-        pass
-
-    def update_df(self):
-        pass
-
-
-class WebScrape2(metaclass=ABCMeta):
-    def __init__(self):
-        self.session = requests.Session()
-        self.headers = {}
-        self.cookies = {}
-        self.get_interval = 0.7
-
-    def get_element_by_url(self, url, cssselect_expr=None):
-        response = self.session.get(url, headers=self.headers, cookies=self.cookies)
-        response.encoding = response.apparent_encoding
-        #self.cookie = response.cookies
-        time.sleep(self.get_interval)
-        soup = BeautifulSoup(response.text, 'lxml')
-        for a in soup.find_all('a'):
-            a.attrs['href'] = urljoin(url,a.get('href'))
-        
-        if cssselect_expr != None:
-            return soup.select(cssselect_expr)
-        else:
-            return soup
-
-    def exe_scrape_by_url(self, url, scraper):
-        first_elem = self.get_element_by_url(url)
-        scraper.set_elem(first_elem)
-        return scraper.scrape()
-
 # Scraper #######################################
 
 class Scraper(metaclass=ABCMeta):
@@ -215,3 +168,50 @@ class Scraper(metaclass=ABCMeta):
 
     def get_next_elem(self):
         pass
+
+# WebScrape #######################################
+
+class WebScrape3(metaclass=ABCMeta):
+    def __init__(self, webaccess : WebAccess):
+        self.webaccess = webaccess
+
+    def exe_scraping(self, url):
+        elem = self.webaccess.get_WebElement(url)
+        scraper = self.get_scraper(elem)
+        df = scraper.scrape()
+        self.update_df()
+        return df
+
+    @abstractmethod
+    def get_scraper(self, url) -> Scraper:
+        pass
+
+    def update_df(self):
+        pass
+
+
+class WebScrape2(metaclass=ABCMeta):
+    def __init__(self):
+        self.session = requests.Session()
+        self.headers = {}
+        self.cookies = {}
+        self.get_interval = 0.7
+
+    def get_element_by_url(self, url, cssselect_expr=None):
+        response = self.session.get(url, headers=self.headers, cookies=self.cookies)
+        response.encoding = response.apparent_encoding
+        #self.cookie = response.cookies
+        time.sleep(self.get_interval)
+        soup = BeautifulSoup(response.text, 'lxml')
+        for a in soup.find_all('a'):
+            a.attrs['href'] = urljoin(url,a.get('href'))
+        
+        if cssselect_expr != None:
+            return soup.select(cssselect_expr)
+        else:
+            return soup
+
+    def exe_scrape_by_url(self, url, scraper):
+        first_elem = self.get_element_by_url(url)
+        scraper.set_elem(first_elem)
+        return scraper.scrape()
