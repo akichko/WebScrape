@@ -20,7 +20,7 @@
  # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  # SOFTWARE.
 
-import webscrape2 as ws
+import webscrape as ws
 import re
 import pandas as pd
 import time

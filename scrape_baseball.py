@@ -1,4 +1,4 @@
-import webscrape2 as ws
+import webscrape as ws
 import time
 
 
